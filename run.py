@@ -53,8 +53,7 @@ def retrieve_available_jobs_for_project(message, project):
     :param project: Project name to look for branches in. Can be a part of the project name
     :return:
     """
-    if len(jobs_dict) == 0:
-        list_jobs()
+    list_jobs()
 
     message.send("> *These are the jobs I've found in project {}:*".format(project))
     message.send("\n".join("> " + str(key) + " - " + jobs_dict[key]["name"] for key in jobs_dict
@@ -68,8 +67,7 @@ def retrieve_available_jobs(message):
     :param message: Slackbot required component to send messages to Slack.
     :return:
     """
-    if len(jobs_dict) == 0:
-        list_jobs()
+    list_jobs()
 
     message.send("> *These are the jobs I've found:* ")
     message.send("\n".join("> " + str(key) + " - " + jobs_dict[key]["name"] for key in jobs_dict))
@@ -83,10 +81,8 @@ def retrieve_repository_branches(message, project_to_list):
     :param project_to_list: string to look for in project names
     :return:
     """
+    list_branches_for_project(project_to_list)
     message.send("> These are the branches I've found for project *{}*:".format(project_to_list))
-    if len(branches_dict) == 0:
-        list_branches_for_project(project_to_list)
-
     message.send("\n".join("> " + str(key) + " - " + branches_dict[key] for key in branches_dict.keys()))
 
 
@@ -97,8 +93,7 @@ def retrieve_all_projects(message):
     :param message: Slackbot required component to send messages to Slack.
     :return:
     """
-    if len(projects_dict) == 0:
-        list_projects()
+    list_projects()
     message.send("> *These are the projects I've found:*")
     message.send("\n".join("> " + str(key) + " - " + projects_dict[key]["name"] for key in projects_dict.keys()))
 
@@ -112,10 +107,8 @@ def empty_and_fill_dictionary(message, target):
     :return:
     """
     if target == "jobs":
-        jobs_dict.clear()
         list_jobs()
     elif target == "projects":
-        projects_dict.clear()
         list_projects()
     else:
         message.send(default_reply)
@@ -130,8 +123,7 @@ def run_job(message, job, branch):
     :param branch: Branch name or id to run
     :return:
     """
-    if len(jobs_dict) == 0:
-        list_jobs()
+    list_jobs()
 
     for value in jobs_dict.values():
         if job == value["name"]:
@@ -165,6 +157,7 @@ def list_branches_for_project(project_to_list):
     :param project_to_list: Project name or key in the projects dictionary to retrieve branches from.
     :return: Dictionary of branches for the specified project.
     """
+    branches_dict.clear()
     key = 0
     for project in git.getall(git.getprojects):
         if project_to_list in project["name"]:
@@ -179,6 +172,7 @@ def list_projects():
     Returns a dictionary of projects the user has access to in Git.
     :return: Dictionary of projects including name and id.
     """
+    projects_dict.clear()
     key = 0
     for project in git.getall(git.getprojects):
         projects_dict[key] = project
@@ -192,6 +186,7 @@ def list_jobs(jenkins_url=JENKINS_BASE_URL):
     :param jenkins_url: Jenkins URL to retrieve jobs from.
     :return: Dictionary of Jenkins jobs including name and url.
     """
+    jobs_dict.clear()
     r = requests.get("{}/api/json".format(jenkins_url))
     key = 0
     for job in r.json()["jobs"]:
