@@ -20,6 +20,9 @@ projects_dict = {}
 jobs_dict = {}
 branches_dict = {}
 
+job_to_run = None
+branch = None
+
 
 @respond_to("help", re.IGNORECASE)
 def show_help(message):
@@ -114,6 +117,19 @@ def empty_and_fill_dictionary(message, target):
         message.send(default_reply)
 
 
+@respond_to("show merge requests in project (.*)", re.IGNORECASE)
+def retrieve_merge_requests_for_project(message, project_to_list):
+    for project in git.getall(git.getprojects):
+        if project_to_list in project["name"]:
+            project_id = project["id"]
+            retrieved_mrs = git.getmergerequests(project_id, state=None)
+
+            message.send("These are the open merge requests I've found for project {}:".format(project_to_list))
+            message.send("\n".join("> " + mr["title"] + " | " + project["http_url_to_repo"][:-4] + "/merge_requests/" +
+                                   str(mr["iid"]) + " " + ":thumbsup: : " + str(mr["upvotes"]) + " :thumbsdown: : " +
+                                   str(mr["downvotes"]) for mr in retrieved_mrs if mr["state"] == "opened"))
+
+
 @respond_to("run project (.*) with branch (.*)", re.IGNORECASE)
 def run_job(message, job, branch):
     """
@@ -136,7 +152,6 @@ def run_job(message, job, branch):
                 job_to_run,
                 JENKINS_TOKEN,
                 branch))
-            print(r.status_code, type(r.status_code))
             if r.status_code == 201:
                 console_url = "{}{}/console".format(value["url"], str(next_build))
                 message.send("> Running job {} with branch {}.".format(job_to_run, branch))
