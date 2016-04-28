@@ -3,16 +3,15 @@
 #
 # Authors:
 #   Samuel Parra <samerparra@gmail.com> - 2016
-
 import re
 import requests
 import gitlab
 
 from time import sleep
-from slackbot.bot import Bot
+from slackbot.bot import Bot, listen_to
 from slackbot.bot import respond_to
 from slackbot_settings import (JENKINS_BASE_URL, JENKINS_TOKEN, POLLING_TIME, GIT_BASE_URL, GIT_PRIVATE_TOKEN,
-                               default_reply)
+                               default_reply, TEAM_COMPONENTS)
 
 git = gitlab.Gitlab(GIT_BASE_URL, token=GIT_PRIVATE_TOKEN)
 
@@ -117,17 +116,25 @@ def empty_and_fill_dictionary(message, target):
         message.send(default_reply)
 
 
-@respond_to("show merge requests in project (.*)", re.IGNORECASE)
+@listen_to("show merge requests in project ([a-zA-Z\s]*)\.?", re.IGNORECASE)
 def retrieve_merge_requests_for_project(message, project_to_list):
     for project in git.getall(git.getprojects):
         if project_to_list in project["name"]:
             project_id = project["id"]
-            retrieved_mrs = git.getmergerequests(project_id, state=None)
+            retrieved_mrs = git.getmergerequests(project_id)
+            if len(retrieved_mrs) > 0:
+                mrs_to_review = []
+                message.send("These are the open merge requests I've found for project {}:".format(project_to_list))
+            else:
+                message.send("There are no open merge requests for project {}".format(project_to_list))
+                return
+            for mr in retrieved_mrs:
+                if mr["state"] == "opened":
+                    mrs_to_review.append(mr)
 
-            message.send("These are the open merge requests I've found for project {}:".format(project_to_list))
             message.send("\n".join("> " + mr["title"] + " | " + project["http_url_to_repo"][:-4] + "/merge_requests/" +
-                                   str(mr["iid"]) + " " + ":thumbsup: : " + str(mr["upvotes"]) + " :thumbsdown: : " +
-                                   str(mr["downvotes"]) for mr in retrieved_mrs if mr["state"] == "opened"))
+                                   str(mr["iid"]) + "\n" + "> " + " *" + ":thumbsup: : " + str(mr["upvotes"]) + " :thumbsdown: : " +
+                                   str(mr["downvotes"]) + "*" for mr in mrs_to_review))
 
 
 @respond_to("run project (.*) with branch (.*)", re.IGNORECASE)
@@ -164,6 +171,18 @@ def run_job(message, job, branch):
                 message.send("I couldn't run the job. Please try again.")
         # else:
         #     message.send("I didn't find the job called {}". format(job))
+
+
+@respond_to(".*standup.*", re.IGNORECASE)
+def choose_standup_responsible(message):
+    """
+    Choose a random person from the squad.
+    :param message: Slackbot required component to send messages to Slack.
+    :return:
+    """
+    person = next(TEAM_COMPONENTS)
+    message.send("Today's responsible for setting up the meeting room is *{}* - Powered by Alex's randomness".
+                 format(person))
 
 
 def list_branches_for_project(project_to_list):
