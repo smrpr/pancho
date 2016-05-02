@@ -3,6 +3,7 @@
 #
 # Authors:
 #   Samuel Parra <samerparra@gmail.com> - 2016
+import datetime
 import re
 import requests
 import gitlab
@@ -118,6 +119,8 @@ def empty_and_fill_dictionary(message, target):
 
 @listen_to("show merge requests in project ([a-zA-Z\s]*)\.?", re.IGNORECASE)
 def retrieve_merge_requests_for_project(message, project_to_list):
+    current_time = datetime.datetime.utcnow()
+
     for project in git.getall(git.getprojects):
         if project_to_list in project["name"]:
             project_id = project["id"]
@@ -132,9 +135,18 @@ def retrieve_merge_requests_for_project(message, project_to_list):
                 if mr["state"] == "opened":
                     mrs_to_review.append(mr)
 
-            message.send("\n".join("> " + mr["title"] + " | " + project["http_url_to_repo"][:-4] + "/merge_requests/" +
-                                   str(mr["iid"]) + "\n" + "> " + " *" + ":thumbsup: : " + str(mr["upvotes"]) + " :thumbsdown: : " +
-                                   str(mr["downvotes"]) + "*" for mr in mrs_to_review))
+            message.send("\n".join("> {title} | {repo_url}/merge_requests/{iid} \n *:thumbsup:: {upvotes} "
+                                   ":thumbsdown:: {downvotes}* \n _Opened for {opened_time}_".format(
+                                    title=mr["title"],
+                                    repo_url=project["http_url_to_repo"][:-4],
+                                    iid=str(mr["iid"]),
+                                    upvotes=str(mr["upvotes"]),
+                                    downvotes=str(mr["downvotes"]),
+                                    opened_time=str((current_time - datetime.datetime.strptime(mr['created_at'],
+                                                    "%Y-%m-%dT%H:%M:%S.%fZ")))
+                                    ) for mr in mrs_to_review
+                                   )
+                         )
 
 
 @respond_to("run project (.*) with branch (.*)", re.IGNORECASE)
