@@ -4,6 +4,7 @@
 # Authors:
 #   Samuel Parra <samerparra@gmail.com> - 2016
 import datetime
+import random
 import re
 import requests
 import gitlab
@@ -31,10 +32,11 @@ def show_help(message):
     :param message: Slackbot required component to send messages to Slack.
     :return:
     """
-    message.send("_*DISCLAIMER:* I am in ßeta!!! I may fail/crash/don't display what you expect. "
+    message.send("_*DISCLAIMER:* I am a ßeta!!! I may fail/crash/don't display what you expect. "
                  "If you find any bug :pray: please ping `@samuelparra` :pray:_\n")
     message.send("*These are the available commands you can use:*\n")
-    message.send("`show all jobs`\n"
+    message.send("standup\n"
+                 "`show all jobs`\n"
                  "> Example: show all jobs\n"
                  "`show jobs in [project]`\n"
                  "> Example: show jobs in auctioneer\n"
@@ -181,8 +183,15 @@ def run_job(message, job, branch):
                 message.send("> Check the status of the build in {}".format(console_url))
             else:
                 message.send("I couldn't run the job. Please try again.")
-        # else:
-        #     message.send("I didn't find the job called {}". format(job))
+
+
+# @listen_to(".*", re.IGNORECASE)  # Easter egg to randomly react to some people's messages.
+# def react_to_member(message):
+#     randomizer = random.randint(1, 20) <= 2
+#
+#     if message._client.users.get(message.body["user"])["name"] == '' and randomizer:
+#         message.react("+1")
+
 
 
 @respond_to(".*standup.*", re.IGNORECASE)
@@ -193,8 +202,7 @@ def choose_standup_responsible(message):
     :return:
     """
     person = next(TEAM_COMPONENTS)
-    message.send("Today's responsible for setting up the meeting room is *{}* - Powered by Alex's randomness".
-                 format(person))
+    message.send("Today's responsible for setting up the meeting room is *{}*".format(person))
 
 
 def list_branches_for_project(project_to_list):
@@ -242,10 +250,6 @@ def list_jobs(jenkins_url=JENKINS_BASE_URL):
 
 
 def main():
-    """
-    Starts the bot.
-    :return:
-    """
     bot = Bot()
     bot.run()
 
