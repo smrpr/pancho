@@ -18,3 +18,8 @@ POLLING_TIME = 5
 # Gitlab config
 GIT_BASE_URL = "YOUR GITLAB URL"
 GIT_PRIVATE_TOKEN = "YOUR GITLAB TOKEN"
+
+#Team config
+team_members = []
+random.shuffle(team_members)
+TEAM_COMPONENTS = itertools.cycle(team_members)
