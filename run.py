@@ -6,14 +6,15 @@
 import datetime
 import random
 import re
-import requests
-import gitlab
-
 from time import sleep
+
+import gitlab
+import requests
 from slackbot.bot import Bot, listen_to
 from slackbot.bot import respond_to
+
 from slackbot_settings import (JENKINS_BASE_URL, JENKINS_TOKEN, POLLING_TIME, GIT_BASE_URL, GIT_PRIVATE_TOKEN,
-                               default_reply, TEAM_COMPONENTS)
+                               default_reply, TEAM_COMPONENTS, RESPONSES)
 
 git = gitlab.Gitlab(GIT_BASE_URL, token=GIT_PRIVATE_TOKEN)
 
@@ -119,7 +120,12 @@ def empty_and_fill_dictionary(message, target):
         message.send(default_reply)
 
 
-@listen_to("show merge requests in project ([a-zA-Z\s]*)\.?", re.IGNORECASE)
+@respond_to("show me", re.IGNORECASE)
+def hello(message):
+    retrieve_merge_requests_for_project(message, "auctioneer")
+
+
+@listen_to("Reminder: show merge requests in project ([a-zA-Z\s]*)\.?", re.IGNORECASE)
 def retrieve_merge_requests_for_project(message, project_to_list):
     current_time = datetime.datetime.utcnow()
 
@@ -139,14 +145,14 @@ def retrieve_merge_requests_for_project(message, project_to_list):
 
             message.send("\n".join("> {title} | {repo_url}/merge_requests/{iid} \n *:thumbsup:: {upvotes} "
                                    ":thumbsdown:: {downvotes}* \n _Opened for {opened_time}_".format(
-                                    title=mr["title"],
-                                    repo_url=project["http_url_to_repo"][:-4],
-                                    iid=str(mr["iid"]),
-                                    upvotes=str(mr["upvotes"]),
-                                    downvotes=str(mr["downvotes"]),
-                                    opened_time=str((current_time - datetime.datetime.strptime(mr['created_at'],
-                                                    "%Y-%m-%dT%H:%M:%S.%fZ")))
-                                    ) for mr in mrs_to_review
+                title=mr["title"],
+                repo_url=project["http_url_to_repo"][:-4],
+                iid=str(mr["iid"]),
+                upvotes=str(mr["upvotes"]),
+                downvotes=str(mr["downvotes"]),
+                opened_time=str((current_time - datetime.datetime.strptime(mr['created_at'],
+                                                                           "%Y-%m-%dT%H:%M:%S.%fZ")))
+            ) for mr in mrs_to_review
                                    )
                          )
 
@@ -185,13 +191,21 @@ def run_job(message, job, branch):
                 message.send("I couldn't run the job. Please try again.")
 
 
+@respond_to("are we going to finish travel api this sprint?", re.IGNORECASE)
+def retrieve_available_jobs_for_project(message):
+    """
+    Responds with prediction.
+    :param message: Slackbot required component to send messages to Slack.
+    """
+    message.send("http://i.imgur.com/uMNAEeX.gif")
+
+
 # @listen_to(".*", re.IGNORECASE)  # Easter egg to randomly react to some people's messages.
 # def react_to_member(message):
 #     randomizer = random.randint(1, 20) <= 2
 #
 #     if message._client.users.get(message.body["user"])["name"] == '' and randomizer:
 #         message.react("+1")
-
 
 
 @respond_to(".*standup.*", re.IGNORECASE)
@@ -201,8 +215,15 @@ def choose_standup_responsible(message):
     :param message: Slackbot required component to send messages to Slack.
     :return:
     """
-    person = next(TEAM_COMPONENTS)
-    message.send("Today's responsible for setting up the meeting room is *{}*".format(person))
+    person = random.choice(TEAM_COMPONENTS)
+    phrase = random.choice(RESPONSES)
+    message.send(phrase.format(person))
+
+
+@respond_to("are you ready?", re.IGNORECASE)
+def chew_gum(message):
+    message.send("I'm here to kick ass and chew bubblegum... And I'm all out of bubblegum. "
+                 "https://media1.giphy.com/media/kPDIgkaVGnySs/giphy.gif")
 
 
 def list_branches_for_project(project_to_list):
@@ -252,6 +273,7 @@ def list_jobs(jenkins_url=JENKINS_BASE_URL):
 def main():
     bot = Bot()
     bot.run()
+
 
 if __name__ == "__main__":
     main()
