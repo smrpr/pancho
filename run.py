@@ -217,10 +217,10 @@ def choose_standup_responsible(message):
     :return:
     """
     random.shuffle(TEAM_MEMBERS)
-    chosen_one = itertools.cycle(TEAM_MEMBERS).next()
+    chosen_one = next(itertools.cycle(TEAM_MEMBERS))
 
     random.shuffle(RESPONSES_LIST)
-    chosen_response = itertools.cycle(RESPONSES_LIST).next()
+    chosen_response = next(itertools.cycle(RESPONSES_LIST))
 
     message.send(chosen_response.format(chosen_one))
 
