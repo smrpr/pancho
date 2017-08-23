@@ -4,6 +4,7 @@
 # Authors:
 #   Samuel Parra <samerparra@gmail.com> - 2016
 import datetime
+import itertools
 import random
 import re
 from time import sleep
@@ -14,7 +15,7 @@ from slackbot.bot import Bot, listen_to
 from slackbot.bot import respond_to
 
 from slackbot_settings import (JENKINS_BASE_URL, JENKINS_TOKEN, POLLING_TIME, GIT_BASE_URL, GIT_PRIVATE_TOKEN,
-                               default_reply, TEAM_COMPONENTS, RESPONSES)
+                               default_reply, TEAM_MEMBERS, RESPONSES_LIST)
 
 git = gitlab.Gitlab(GIT_BASE_URL, token=GIT_PRIVATE_TOKEN)
 
@@ -215,9 +216,13 @@ def choose_standup_responsible(message):
     :param message: Slackbot required component to send messages to Slack.
     :return:
     """
-    person = random.choice(TEAM_COMPONENTS)
-    phrase = random.choice(RESPONSES)
-    message.send(phrase.format(person))
+    team_members = random.shuffle(TEAM_MEMBERS)
+    chosen_one = itertools.cycle(team_members)
+
+    response = random.shuffle(RESPONSES_LIST)
+    chosen_response = itertools.cycle(response)
+
+    message.send(chosen_response.format(chosen_one))
 
 
 @respond_to("are you ready?", re.IGNORECASE)
