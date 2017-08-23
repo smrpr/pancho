@@ -216,11 +216,11 @@ def choose_standup_responsible(message):
     :param message: Slackbot required component to send messages to Slack.
     :return:
     """
-    team_members = random.shuffle(TEAM_MEMBERS)
-    chosen_one = itertools.cycle(team_members)
+    random.shuffle(TEAM_MEMBERS)
+    chosen_one = itertools.cycle(TEAM_MEMBERS).next()
 
-    response = random.shuffle(RESPONSES_LIST)
-    chosen_response = itertools.cycle(response)
+    random.shuffle(RESPONSES_LIST)
+    chosen_response = itertools.cycle(RESPONSES_LIST).next()
 
     message.send(chosen_response.format(chosen_one))
 
