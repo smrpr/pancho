@@ -74,7 +74,8 @@ def choose_standup_responsible(message):
     chosen_response = next(itertools.cycle(RESPONSES_LIST))
 
     message.send("> {}\n"
-                 "> Everyone prepare answers to the following questions: \n"
+                 "> *------------------* \n"
+                 "> *Everyone* prepare answers to the following questions: \n"
                  "> How much time did you spend on house-work? \n"
                  "> What technical decisions you took and should share with the two teams?".format(
         chosen_response.format(chosen_one)))
