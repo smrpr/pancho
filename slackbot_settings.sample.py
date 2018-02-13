@@ -39,3 +39,5 @@ RESPONSES_LIST = [":yo_dawg: YO DAWG I HERD U LIEK STANDUPS SO I CHOSE *{}* SO Y
                   ":crossed_swords: Hello *{}*, my name is Pancho Gonzales. You killed my sprint. "
                   "Prepare the standup :crossed_swords:",
                   "Frankly, my dear, I don’t give a damn."]
+
+KOKSAL_LIST = []

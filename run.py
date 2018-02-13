@@ -3,19 +3,17 @@
 #
 # Authors:
 #   Samuel Parra <samerparra@gmail.com> - 2016
-import datetime
 import itertools
+import json
 import random
 import re
-from time import sleep
 
 import gitlab
-import requests
 from slackbot.bot import Bot, listen_to
 from slackbot.bot import respond_to
 
-from slackbot_settings import (JENKINS_BASE_URL, JENKINS_TOKEN, POLLING_TIME, GIT_BASE_URL, GIT_PRIVATE_TOKEN,
-                               default_reply, TEAM_MEMBERS, RESPONSES_LIST)
+from slackbot_settings import (GIT_BASE_URL, GIT_PRIVATE_TOKEN,
+                               TEAM_MEMBERS, RESPONSES_LIST, KOKSAL_LIST)
 
 git = gitlab.Gitlab(GIT_BASE_URL, token=GIT_PRIVATE_TOKEN)
 
@@ -36,160 +34,6 @@ def show_help(message):
     """
     message.send("_*DISCLAIMER:* I am a ßeta!!! I may fail/crash/don't display what you expect. "
                  "If you find any bug :pray: please ping `@samuelparra` :pray:_\n")
-    message.send("*These are the available commands you can use:*\n")
-    message.send("standup\n"
-                 "`show all jobs`\n"
-                 "> Example: show all jobs\n"
-                 "`show jobs in [project]`\n"
-                 "> Example: show jobs in auctioneer\n"
-                 "`show all projects`\n"
-                 "> Example: show all projects\n"
-                 "`show branches for project [project_name]`\n"
-                 "> Example: show branches for project auctioneer\n"
-                 "`refresh [jobs|projects] (useful for when you've added new jobs and want to display them)`\n"
-                 "> Example: refresh jobs\n"
-                 "`run project [job_name] with branch [branch_name]`\n"
-                 "> Example: run project Auctioneer - E2E tests with branch HD_2767_avg_cost\n")
-
-
-@respond_to("show jobs in (.*)", re.IGNORECASE)
-def retrieve_available_jobs_for_project(message, project):
-    """
-    Responds with a list of jobs which match the given regexp.
-    :param message: Slackbot required component to send messages to Slack.
-    :param project: Project name to look for branches in. Can be a part of the project name
-    :return:
-    """
-    list_jobs()
-
-    message.send("> *These are the jobs I've found in project {}:*".format(project))
-    message.send("\n".join("> " + str(key) + " - " + jobs_dict[key]["name"] for key in jobs_dict
-                           if project.lower() in jobs_dict[key]["name"].lower()))
-
-
-@respond_to("show all jobs", re.IGNORECASE)
-def retrieve_available_jobs(message):
-    """
-    Responds with a list of available Jenkins jobs.
-    :param message: Slackbot required component to send messages to Slack.
-    :return:
-    """
-    list_jobs()
-
-    message.send("> *These are the jobs I've found:* ")
-    message.send("\n".join("> " + str(key) + " - " + jobs_dict[key]["name"] for key in jobs_dict))
-
-
-@respond_to("show branches for project (.*)", re.IGNORECASE)
-def retrieve_repository_branches(message, project_to_list):
-    """
-    Responds with a list of branches which match the given project regexp.
-    :param message: Slackbot required component to send messages to Slack.
-    :param project_to_list: string to look for in project names
-    :return:
-    """
-    list_branches_for_project(project_to_list)
-    message.send("> These are the branches I've found for project *{}*:".format(project_to_list))
-    message.send("\n".join("> " + str(key) + " - " + branches_dict[key] for key in branches_dict.keys()))
-
-
-@respond_to("show all projects", re.IGNORECASE)
-def retrieve_all_projects(message):
-    """
-    Responds with a list of projects the user has access to in Gitlab.
-    :param message: Slackbot required component to send messages to Slack.
-    :return:
-    """
-    list_projects()
-    message.send("> *These are the projects I've found:*")
-    message.send("\n".join("> " + str(key) + " - " + projects_dict[key]["name"] for key in projects_dict.keys()))
-
-
-@respond_to("refresh (.*)", re.IGNORECASE)
-def empty_and_fill_dictionary(message, target):
-    """
-    Empties the given dictionary and fills it again with the latest info.
-    :param message: Slackbot required component to send messages to Slack.
-    :param target: Dictionary to clean and fill again.
-    :return:
-    """
-    if target == "jobs":
-        list_jobs()
-    elif target == "projects":
-        list_projects()
-    else:
-        message.send(default_reply)
-
-
-@respond_to("show me", re.IGNORECASE)
-def hello(message):
-    retrieve_merge_requests_for_project(message, "auctioneer")
-
-
-@listen_to("Reminder: show merge requests in project ([a-zA-Z\s]*)\.?", re.IGNORECASE)
-def retrieve_merge_requests_for_project(message, project_to_list):
-    current_time = datetime.datetime.utcnow()
-
-    for project in git.getall(git.getprojects):
-        if project_to_list in project["name"]:
-            project_id = project["id"]
-            retrieved_mrs = git.getmergerequests(project_id)
-            if len(retrieved_mrs) > 0:
-                mrs_to_review = []
-                message.send("These are the open merge requests I've found for project {}:".format(project_to_list))
-            else:
-                message.send("There are no open merge requests for project {}".format(project_to_list))
-                return
-            for mr in retrieved_mrs:
-                if mr["state"] == "opened":
-                    mrs_to_review.append(mr)
-
-            message.send("\n".join("> {title} | {repo_url}/merge_requests/{iid} \n *:thumbsup:: {upvotes} "
-                                   ":thumbsdown:: {downvotes}* \n _Opened for {opened_time}_".format(
-                title=mr["title"],
-                repo_url=project["http_url_to_repo"][:-4],
-                iid=str(mr["iid"]),
-                upvotes=str(mr["upvotes"]),
-                downvotes=str(mr["downvotes"]),
-                opened_time=str((current_time - datetime.datetime.strptime(mr['created_at'],
-                                                                           "%Y-%m-%dT%H:%M:%S.%fZ")))
-            ) for mr in mrs_to_review
-                                   )
-                         )
-
-
-@respond_to("run project (.*) with branch (.*)", re.IGNORECASE)
-def run_job(message, job, branch):
-    """
-
-    :param message: Slackbot required component to send messages to Slack.
-    :param job: Job name or id to run
-    :param branch: Branch name or id to run
-    :return:
-    """
-    list_jobs()
-
-    for value in jobs_dict.values():
-        if job == value["name"]:
-            job_to_run = value["name"]
-            last_build = requests.get("{}lastBuild/buildNumber".format(value["url"])).text
-            next_build = int(last_build) + 1
-
-            r = requests.post("{}/buildByToken/buildWithParameters?job={}&token={}&auctioneer_branch=origin/{}".format(
-                JENKINS_BASE_URL,
-                job_to_run,
-                JENKINS_TOKEN,
-                branch))
-            if r.status_code == 201:
-                console_url = "{}{}/console".format(value["url"], str(next_build))
-                message.send("> Running job {} with branch {}.".format(job_to_run, branch))
-
-                while requests.get(console_url).status_code == 404:
-                    sleep(POLLING_TIME)
-
-                message.send("> Check the status of the build in {}".format(console_url))
-            else:
-                message.send("I couldn't run the job. Please try again.")
 
 
 @respond_to("are we going to finish travel api this sprint?", re.IGNORECASE)
@@ -201,12 +45,19 @@ def retrieve_available_jobs_for_project(message):
     message.send("http://i.imgur.com/uMNAEeX.gif")
 
 
-# @listen_to(".*", re.IGNORECASE)  # Easter egg to randomly react to some people's messages.
-# def react_to_member(message):
-#     randomizer = random.randint(1, 20) <= 2
-#
-#     if message._client.users.get(message.body["user"])["name"] == '' and randomizer:
-#         message.react("+1")
+@listen_to("^ *koksal *$", re.IGNORECASE)
+def koksal_is_love(message):
+    try:
+        if message.body['channel'] == 'G59V03UMC':
+            url = random.choice(KOKSAL_LIST)
+            attachments = [{'image_url': url,
+                            'text': '',
+                            'title': ''}]
+
+            message.send_webapi('', json.dumps(attachments))
+    except:
+        import traceback
+        traceback.print_exc()
 
 
 @respond_to(".*standup.*", re.IGNORECASE)
@@ -222,57 +73,20 @@ def choose_standup_responsible(message):
     random.shuffle(RESPONSES_LIST)
     chosen_response = next(itertools.cycle(RESPONSES_LIST))
 
-    message.send(chosen_response.format(chosen_one))
+    message.send("> {}\n > Everyone prepare answers to the following questions: \n "
+                 "- How much time did you spend on house-work? \n "
+                 "- What technical decisions you took and should share with the two teams?".format(
+        chosen_response.format(chosen_one)))
 
 
-@respond_to("are you ready?", re.IGNORECASE)
-def chew_gum(message):
-    message.send("I'm here to kick ass and chew bubblegum... And I'm all out of bubblegum. "
-                 "https://media1.giphy.com/media/kPDIgkaVGnySs/giphy.gif")
+def post_message(self, channel, text, **params):
+    """ Post message to a channel (id or name)
 
-
-def list_branches_for_project(project_to_list):
+    :returns: the slack API response
     """
-    Returns a dictionary of branches for a specified project in Git.
-    :param project_to_list: Project name or key in the projects dictionary to retrieve branches from.
-    :return: Dictionary of branches for the specified project.
-    """
-    branches_dict.clear()
-    key = 0
-    for project in git.getall(git.getprojects):
-        if project_to_list in project["name"]:
-            for branch in git.getbranches(project["id"]):
-                branches_dict[key] = branch["name"]
-                key += 1
-    return branches_dict
-
-
-def list_projects():
-    """
-    Returns a dictionary of projects the user has access to in Git.
-    :return: Dictionary of projects including name and id.
-    """
-    projects_dict.clear()
-    key = 0
-    for project in git.getall(git.getprojects):
-        projects_dict[key] = project
-        key += 1
-    return projects_dict
-
-
-def list_jobs(jenkins_url=JENKINS_BASE_URL):
-    """
-    Returns a dictionary of jobs from the Jenkins API endpoint.
-    :param jenkins_url: Jenkins URL to retrieve jobs from.
-    :return: Dictionary of Jenkins jobs including name and url.
-    """
-    jobs_dict.clear()
-    r = requests.get("{}/api/json".format(jenkins_url))
-    key = 0
-    for job in r.json()["jobs"]:
-        jobs_dict[key] = job
-        key += 1
-    return jobs_dict
+    params['as_user'] = params.get('as_user', self.username)
+    params['link_names'] = params.get('link_names', True)
+    return self.client.webapi.chat.post_message(channel, text, **params)
 
 
 def main():
